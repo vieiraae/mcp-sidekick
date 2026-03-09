@@ -8,7 +8,7 @@ import axios from "axios";
 import type { MicrosoftTodoConfig, OAuthTokens } from "./types.js";
 import { getAuthUrl, getTokenUrl, MS_TODO_SCOPES } from "./constants.js";
 
-const TOKEN_FILE = path.join(os.homedir(), ".microsoft-todo-mcp-tokens.json");
+const TOKEN_FILE = path.join(os.homedir(), ".mcp-sidekick-microsoft-todo-tokens.json");
 
 export function loadTokens(): OAuthTokens | null {
   try {
@@ -136,7 +136,31 @@ export function performAuthFlow(config: MicrosoftTodoConfig): Promise<OAuthToken
           saveTokens(tokens);
 
           res.writeHead(200, { "Content-Type": "text/html" });
-          res.end("<html><body><h1>Authorization successful!</h1><p>You can close this window and return to your application.</p></body></html>");
+          res.end(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Authorization Successful</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: #1a1a2e; }
+    .card { background: #fff; border-radius: 16px; padding: 48px; max-width: 460px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+    .icon { font-size: 56px; margin-bottom: 16px; }
+    h1 { font-size: 24px; margin-bottom: 12px; color: #1a1a2e; }
+    .package { display: inline-block; background: #f0edff; color: #5b4dc7; padding: 4px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; margin-bottom: 20px; font-family: 'SF Mono', SFMono-Regular, Consolas, monospace; }
+    p { font-size: 15px; color: #555; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">✔️</div>
+    <h1>Authorization Successful</h1>
+    <span class="package">@mcp-sidekick/microsoft-todo</span>
+    <p>Your account has been linked successfully. You can close this window and return to your application.</p>
+  </div>
+</body>
+</html>`);
           server.close();
           resolve(tokens);
         } catch (err) {

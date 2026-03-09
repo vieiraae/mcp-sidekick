@@ -10,12 +10,13 @@ An MCP (Model Context Protocol) server that enables LLMs to interact with the Sp
 - A [Spotify Developer](https://developer.spotify.com/dashboard) application with:
   - **Client ID**
   - **Client Secret**
-  - **Redirect URI** set to `http://localhost:8888/callback` (or your custom value)
+  - **Redirect URI** set to `http://127.0.0.1:3000/callback` (or your custom value)
 
 ## Setup
 
 1. **Create a Spotify App** at https://developer.spotify.com/dashboard
-   - Add `http://localhost:8888/callback` as a Redirect URI
+   - Add `http://127.0.0.1:3000/callback` as a Redirect URI
+   - Set `Web Playback SDK` and `Web API` as APIs used
 
 2. **Install & Build**
    ```bash
@@ -24,7 +25,7 @@ An MCP (Model Context Protocol) server that enables LLMs to interact with the Sp
    npm run build
    ```
 
-3. **Configure in your MCP client** — create a `.vscode/mcp.json` file in your project (add it to `.gitignore` to keep secrets out of source control):
+3. **Configure in your MCP client** — create a `.mcp.json` file in your project:
    ```json
    {
      "inputs": [
@@ -49,14 +50,14 @@ An MCP (Model Context Protocol) server that enables LLMs to interact with the Sp
          "env": {
            "SPOTIFY_CLIENT_ID": "${input:spotify-client-id}",
            "SPOTIFY_CLIENT_SECRET": "${input:spotify-client-secret}",
-           "SPOTIFY_REDIRECT_URI": "http://localhost:8888/callback"
+           "SPOTIFY_REDIRECT_URI": "http://127.0.0.1:3000/callback"
          }
        }
      }
    }
    ```
 
-4. **First run** — on the first tool call, the server will open your browser for Spotify authorization. After granting access, tokens are stored locally at `~/.spotify-mcp-tokens.json` and auto-refreshed.
+4. **First run** — on the first tool call, the server will open your browser for Spotify authorization. After granting access, tokens are stored locally at `~/.mcp-sidekick-spotify-tokens.json` and auto-refreshed.
 
 ## Environment Variables
 
@@ -64,7 +65,29 @@ An MCP (Model Context Protocol) server that enables LLMs to interact with the Sp
 |---|---|---|
 | `SPOTIFY_CLIENT_ID` | Yes | Your Spotify app Client ID |
 | `SPOTIFY_CLIENT_SECRET` | Yes | Your Spotify app Client Secret |
-| `SPOTIFY_REDIRECT_URI` | No | OAuth callback URL (default: `http://localhost:8888/callback`) |
+| `SPOTIFY_REDIRECT_URI` | No | OAuth callback URL (default: `http://127.0.0.1:3000/callback`) |
+| `SPOTIFY_DEVICE_ID` | No | Default device ID for playback commands (see [Getting Your Device ID](#getting-your-device-id)) |
+
+## Getting Your Device ID
+
+Setting `SPOTIFY_DEVICE_ID` ensures playback commands target a specific device, which avoids errors when no device is currently active.
+
+1. **Start the MCP server** without `SPOTIFY_DEVICE_ID` set
+2. **Open Spotify** on the device you want to use and **start playing any track**
+3. **Ask the LLM** to get your available devices (this calls the `spotify_get_devices` tool)
+4. **Copy the Device ID** from the active device in the response
+5. **Add it to your `.mcp.json`** configuration:
+   ```json
+   "env": {
+     "SPOTIFY_CLIENT_ID": "${input:spotify-client-id}",
+     "SPOTIFY_CLIENT_SECRET": "${input:spotify-client-secret}",
+     "SPOTIFY_REDIRECT_URI": "http://127.0.0.1:3000/callback",
+     "SPOTIFY_DEVICE_ID": "your-device-id-here"
+   }
+   ```
+6. **Restart the MCP server** to apply the change
+
+Once configured, all playback commands (play, pause, next, previous, volume, shuffle, repeat, queue, transfer) will default to this device when no explicit `device_id` is provided.
 
 ## Available Tools
 

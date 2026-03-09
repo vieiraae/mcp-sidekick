@@ -39,6 +39,7 @@ async function main(): Promise<void> {
   }
 
   const client = new SpotifyClient(config);
+  const defaultDeviceId = process.env.SPOTIFY_DEVICE_ID;
 
   const server = new McpServer({
     name: "spotify-mcp-server",
@@ -46,7 +47,7 @@ async function main(): Promise<void> {
   });
 
   // Register all tools
-  registerPlaybackTools(server, client);
+  registerPlaybackTools(server, client, defaultDeviceId);
   registerSearchTools(server, client);
   registerInfoTools(server, client);
   registerLibraryTools(server, client);

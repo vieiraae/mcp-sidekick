@@ -1,6 +1,6 @@
 {
   "name": "@mcp-sidekick/spotify",
-  "version": "1.0.1",
+  "version": "1.2.0",
   "description": "MCP server for Spotify API integration - control playback, search music, manage playlists",
   "type": "module",
   "main": "dist/index.js",

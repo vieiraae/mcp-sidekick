@@ -10,13 +10,13 @@ An MCP (Model Context Protocol) server that enables LLMs to manage Microsoft To 
 - A **Microsoft Entra ID (Azure AD)** app registration with:
   - **Application (client) ID**
   - **Client Secret**
-  - **Redirect URI** set to `http://localhost:3333/callback`
+  - **Redirect URI** set to `http://localhost:3000/callback`
   - **API permissions**: `Tasks.ReadWrite` and `User.Read` (delegated)
 
 ## Setup
 
 1. **Register an app** at https://portal.azure.com → Azure Active Directory → App registrations → New registration
-   - Set **Redirect URI** to `http://localhost:3333/callback` (type: Web)
+   - Set **Redirect URI** to `http://localhost:3000/callback` (type: Web)
    - Under **Certificates & secrets**, create a new client secret
    - Under **API permissions**, add Microsoft Graph delegated permissions:
      - `Tasks.ReadWrite`
@@ -29,7 +29,7 @@ An MCP (Model Context Protocol) server that enables LLMs to manage Microsoft To 
    npm run build
    ```
 
-3. **Configure in your MCP client** — create a `.vscode/mcp.json` file in your project (add it to `.gitignore` to keep secrets out of source control):
+3. **Configure in your MCP client** — create a `.mcp.json` file in your project:
    ```json
    {
      "inputs": [
@@ -54,14 +54,14 @@ An MCP (Model Context Protocol) server that enables LLMs to manage Microsoft To 
          "env": {
            "MICROSOFT_TODO_CLIENT_ID": "${input:todo-client-id}",
            "MICROSOFT_TODO_CLIENT_SECRET": "${input:todo-client-secret}",
-           "MICROSOFT_TODO_REDIRECT_URI": "http://localhost:3333/callback"
+           "MICROSOFT_TODO_REDIRECT_URI": "http://localhost:3000/callback"
          }
        }
      }
    }
    ```
 
-4. **First run** — on the first tool call, the server will open your browser for Microsoft sign-in. After granting access, tokens are stored locally at `~/.microsoft-todo-mcp-tokens.json` and auto-refreshed.
+4. **First run** — on the first tool call, the server will open your browser for Microsoft sign-in. After granting access, tokens are stored locally at `~/.mcp-sidekick-microsoft-todo-tokens.json` and auto-refreshed.
 
 ## Environment Variables
 

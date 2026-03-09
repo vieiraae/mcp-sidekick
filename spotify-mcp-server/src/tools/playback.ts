@@ -3,7 +3,7 @@ import { z } from "zod";
 import { SpotifyClient, handleSpotifyError, formatDuration } from "../spotify-client.js";
 import type { SpotifyPlaybackState } from "../types.js";
 
-export function registerPlaybackTools(server: McpServer, client: SpotifyClient): void {
+export function registerPlaybackTools(server: McpServer, client: SpotifyClient, defaultDeviceId?: string): void {
 
   server.registerTool(
     "spotify_get_playback",
@@ -84,7 +84,7 @@ Examples:
             body.context_uri = uri;
           }
         }
-        const params: Record<string, string | undefined> = { device_id };
+        const params: Record<string, string | undefined> = { device_id: device_id ?? defaultDeviceId };
         await client.requestNoContent("me/player/play", "PUT", Object.keys(body).length ? body : undefined, params);
         return { content: [{ type: "text", text: uri ? `Playing: ${uri}` : "Playback resumed." }] };
       } catch (error) {
@@ -110,7 +110,7 @@ Examples:
     },
     async ({ device_id }) => {
       try {
-        await client.requestNoContent("me/player/pause", "PUT", undefined, { device_id });
+        await client.requestNoContent("me/player/pause", "PUT", undefined, { device_id: device_id ?? defaultDeviceId });
         return { content: [{ type: "text", text: "Playback paused." }] };
       } catch (error) {
         return { content: [{ type: "text", text: handleSpotifyError(error) }] };
@@ -135,7 +135,7 @@ Examples:
     },
     async ({ device_id }) => {
       try {
-        await client.requestNoContent("me/player/next", "POST", undefined, { device_id });
+        await client.requestNoContent("me/player/next", "POST", undefined, { device_id: device_id ?? defaultDeviceId });
         return { content: [{ type: "text", text: "Skipped to next track." }] };
       } catch (error) {
         return { content: [{ type: "text", text: handleSpotifyError(error) }] };
@@ -160,7 +160,7 @@ Examples:
     },
     async ({ device_id }) => {
       try {
-        await client.requestNoContent("me/player/previous", "POST", undefined, { device_id });
+        await client.requestNoContent("me/player/previous", "POST", undefined, { device_id: device_id ?? defaultDeviceId });
         return { content: [{ type: "text", text: "Skipped to previous track." }] };
       } catch (error) {
         return { content: [{ type: "text", text: handleSpotifyError(error) }] };
@@ -191,7 +191,7 @@ Args:
       try {
         await client.requestNoContent("me/player/volume", "PUT", undefined, {
           volume_percent,
-          device_id,
+          device_id: device_id ?? defaultDeviceId,
         });
         return { content: [{ type: "text", text: `Volume set to ${volume_percent}%.` }] };
       } catch (error) {
@@ -223,7 +223,7 @@ Args:
       try {
         await client.requestNoContent("me/player/shuffle", "PUT", undefined, {
           state,
-          device_id,
+          device_id: device_id ?? defaultDeviceId,
         });
         return { content: [{ type: "text", text: `Shuffle ${state ? "enabled" : "disabled"}.` }] };
       } catch (error) {
@@ -255,7 +255,7 @@ Args:
       try {
         await client.requestNoContent("me/player/repeat", "PUT", undefined, {
           state,
-          device_id,
+          device_id: device_id ?? defaultDeviceId,
         });
         return { content: [{ type: "text", text: `Repeat mode set to "${state}".` }] };
       } catch (error) {
@@ -285,7 +285,7 @@ Args:
     },
     async ({ uri, device_id }) => {
       try {
-        await client.requestNoContent("me/player/queue", "POST", undefined, { uri, device_id });
+        await client.requestNoContent("me/player/queue", "POST", undefined, { uri, device_id: device_id ?? defaultDeviceId });
         return { content: [{ type: "text", text: `Added ${uri} to the queue.` }] };
       } catch (error) {
         return { content: [{ type: "text", text: handleSpotifyError(error) }] };
@@ -348,8 +348,12 @@ Args:
     },
     async ({ device_id, play }) => {
       try {
+        const targetDevice = device_id ?? defaultDeviceId;
+        if (!targetDevice) {
+          return { content: [{ type: "text", text: "Error: device_id is required for transfer playback." }] };
+        }
         await client.requestNoContent("me/player", "PUT", {
-          device_ids: [device_id],
+          device_ids: [targetDevice],
           play,
         });
         return { content: [{ type: "text", text: `Playback transferred to device ${device_id}.` }] };

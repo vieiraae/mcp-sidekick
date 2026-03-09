@@ -1,6 +1,6 @@
 {
   "name": "@mcp-sidekick/microsoft-todo",
-  "version": "1.0.1",
+  "version": "1.1.1",
   "description": "MCP server for Microsoft To Do - manage task lists, tasks, and reminders via Microsoft Graph",
   "type": "module",
   "main": "dist/index.js",
