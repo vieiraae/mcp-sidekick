@@ -1,0 +1,70 @@
+name: Publish to npm
+
+on:
+  push:
+    tags:
+      - '*-v*' # e.g. msx-v1.0.0 publishes msx-mcp-server
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Package directory to publish
+        required: true
+        type: choice
+        options:
+          - msx-mcp-server
+          - microsoft-todo-mcp-server
+          - spotify-mcp-server
+          - weather-mcp-server
+
+permissions:
+  contents: read
+  id-token: write # npm provenance
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Resolve package directory
+        id: pkg
+        env:
+          INPUT_PACKAGE: ${{ inputs.package }}
+          REF_NAME: ${{ github.ref_name }}
+        run: |
+          if [ -n "$INPUT_PACKAGE" ]; then
+            dir="$INPUT_PACKAGE"
+          else
+            dir="${REF_NAME%-v*}-mcp-server"
+            version="${REF_NAME##*-v}"
+            actual=$(node -p "require('./$dir/package.json').version")
+            if [ "$version" != "$actual" ]; then
+              echo "::error::Tag version $version does not match $dir/package.json version $actual"
+              exit 1
+            fi
+          fi
+          test -f "$dir/package.json" || { echo "::error::$dir/package.json not found"; exit 1; }
+          echo "dir=$dir" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://registry.npmjs.org
+
+      - name: Install
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm ci
+
+      - name: Build
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm run build --if-present
+
+      - name: Test
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm test --if-present
+
+      - name: Publish
+        working-directory: ${{ steps.pkg.outputs.dir }}
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
