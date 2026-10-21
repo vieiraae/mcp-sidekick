@@ -1,0 +1,46 @@
+{
+  "name": "@mcp-sidekick/msx",
+  "version": "1.0.0",
+  "description": "MCP server for Microsoft Dynamics 365 / MSX CRM operations",
+  "type": "module",
+  "main": "src/index.js",
+  "bin": {
+    "msx-mcp-server": "src/index.js"
+  },
+  "files": [
+    "src",
+    "!src/__tests__",
+    "LICENSE.md",
+    "SECURITY.md",
+    "README.md"
+  ],
+  "scripts": {
+    "start": "node src/index.js",
+    "auth": "node src/index.js --auth",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "dynamics365",
+    "crm",
+    "msx"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/vieiraae/mcp-sidekick.git",
+    "directory": "msx-mcp-server"
+  },
+  "dependencies": {
+    "@azure/msal-node": "7.0.1",
+    "@modelcontextprotocol/sdk": "1.31.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "vitest": "^4.1.11"
+  }
+}
