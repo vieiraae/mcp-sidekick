@@ -14,9 +14,12 @@ function makeCrm({ who = { ok: true, status: 200, data: { UserId: ME } }, member
       if (path.startsWith('systemusers(')) return { ok: true, status: 200, data: { fullname: 'Alex Vieira' } };
       return { ok: true, status: 200, data: {} };
     }),
-    requestAllPages: vi.fn(async (path) => {
+    requestAllPages: vi.fn(async (path, opts) => {
       if (path === 'teams') {
-        return { ok: true, status: 200, data: { value: members === null ? [] : [{ teamid: 't1', teammembership_association: members }] } };
+        // Emulate the server-side any() membership filter.
+        const userId = opts.query.$filter.match(/u\/systemuserid eq ([0-9a-f-]+)/)[1];
+        const isMember = (members || []).some((m) => m.systemuserid === userId);
+        return { ok: true, status: 200, data: { value: isMember ? [{ teamid: 't1' }] : [] } };
       }
       return { ok: true, status: 200, data: { value: [] } };
     }),
@@ -65,6 +68,14 @@ describe('add_me_to_deal_team', () => {
     expect(parsed.staged).toBe(false);
     expect(parsed.alreadyMember).toBe(true);
     expect(getApprovalQueue().listPending()).toHaveLength(0);
+  });
+
+  it('filters membership server-side for the current user', async () => {
+    const crm = makeCrm({ members: null });
+    await call(crm, { opportunityId: OPP_ID });
+    const [, opts] = crm.requestAllPages.mock.calls.find(([path]) => path === 'teams');
+    expect(opts.query.$filter).toContain(`teammembership_association/any(u:u/systemuserid eq ${ME.toLowerCase()})`);
+    expect(opts.query.$expand).toBeUndefined();
   });
 
   it('errors when WhoAmI fails', async () => {

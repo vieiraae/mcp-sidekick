@@ -9585,9 +9585,9 @@ export function registerTools(server, crmClient) {
         crmClient.request(`systemusers(${resolvedUserId})`, { query: { $select: 'fullname' } }),
         crmClient.requestAllPages('teams', {
           query: {
-            $filter: `_regardingobjectid_value eq '${opportunityId}' and _teamtemplateid_value eq '${OPP_TEAM_TEMPLATE_ID}'`,
+            // Filter membership server-side; $expand of members is paged and can miss users on large teams.
+            $filter: `_regardingobjectid_value eq '${opportunityId}' and _teamtemplateid_value eq '${OPP_TEAM_TEMPLATE_ID}' and teammembership_association/any(u:u/systemuserid eq ${resolvedUserId})`,
             $select: 'teamid',
-            $expand: 'teammembership_association($select=systemuserid)',
             $top: '1',
           },
         }),
@@ -9600,9 +9600,7 @@ export function registerTools(server, crmClient) {
       const opportunityName = oppResult.data?.name || null;
       const displayName = (userResult.ok && userResult.data?.fullname) || null;
       const recordUrl = buildRecordUrl(getCrmBase(), 'opportunity', opportunityId);
-      const team = teamResult.data?.value?.[0];
-      const alreadyMember = (team?.teammembership_association || [])
-        .some((m) => normalizeGuid(m.systemuserid) === resolvedUserId);
+      const alreadyMember = (teamResult.data?.value?.length ?? 0) > 0;
       if (alreadyMember) {
         return text({
           staged: false,
