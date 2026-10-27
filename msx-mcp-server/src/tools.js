@@ -9564,6 +9564,94 @@ export function registerTools(server, crmClient) {
     },
   );
 
+  // ── add_me_to_deal_team (staged) ────────────────────────────
+  // Convenience wrapper over manage_deal_team "add" for the signed-in user:
+  // resolves the caller via WhoAmI and skips staging when already a member.
+  server.tool(
+    'add_me_to_deal_team',
+    'Add the current signed-in user to an opportunity deal team (D365 Access Team, the "Deal Team" tab in MSX). Resolves you via WhoAmI, returns alreadyMember=true if you are already on the team, otherwise stages the add for approval via execute_operation.',
+    {
+      opportunityId: guidSchema.describe('Opportunity GUID'),
+      reason: z.string().optional().describe('Optional reasoning for this change (audited and shown in confirmation dialog).'),
+    },
+    async ({ opportunityId, reason }) => {
+      const who = await crmClient.request('WhoAmI');
+      if (!who.ok || !who.data?.UserId)
+        return error(`Unable to resolve current CRM user (${who.status}): ${who.data?.message || 'WhoAmI failed'}`);
+      const resolvedUserId = normalizeGuid(who.data.UserId);
+
+      const [oppResult, userResult, teamResult] = await Promise.all([
+        crmClient.request(`opportunities(${opportunityId})`, { query: { $select: 'opportunityid,name' } }),
+        crmClient.request(`systemusers(${resolvedUserId})`, { query: { $select: 'fullname' } }),
+        crmClient.requestAllPages('teams', {
+          query: {
+            $filter: `_regardingobjectid_value eq '${opportunityId}' and _teamtemplateid_value eq '${OPP_TEAM_TEMPLATE_ID}'`,
+            $select: 'teamid',
+            $expand: 'teammembership_association($select=systemuserid)',
+            $top: '1',
+          },
+        }),
+      ]);
+      if (!oppResult.ok)
+        return error(`Opportunity ${opportunityId} not found or not accessible (${oppResult.status}): ${oppResult.data?.message || 'lookup failed'}`);
+      if (!teamResult.ok)
+        return error(`Deal team lookup failed (${teamResult.status}): ${teamResult.data?.message}`);
+
+      const opportunityName = oppResult.data?.name || null;
+      const displayName = (userResult.ok && userResult.data?.fullname) || null;
+      const recordUrl = buildRecordUrl(getCrmBase(), 'opportunity', opportunityId);
+      const team = teamResult.data?.value?.[0];
+      const alreadyMember = (team?.teammembership_association || [])
+        .some((m) => normalizeGuid(m.systemuserid) === resolvedUserId);
+      if (alreadyMember) {
+        return text({
+          staged: false,
+          alreadyMember: true,
+          opportunityId,
+          opportunityName,
+          systemUserId: resolvedUserId,
+          displayName,
+          recordUrl,
+          message: `${displayName || 'You'} are already on the deal team for "${opportunityName || opportunityId}".`,
+        });
+      }
+
+      const payload = {
+        Record: { '@odata.type': 'Microsoft.Dynamics.CRM.opportunity', opportunityid: opportunityId },
+        TeamTemplate: { '@odata.type': 'Microsoft.Dynamics.CRM.teamtemplate', teamtemplateid: OPP_TEAM_TEMPLATE_ID },
+      };
+      const payloadAllowlistError = validateWritePayloadFields(payload, TEAM_ACTION_FIELDS);
+      if (payloadAllowlistError) return error(payloadAllowlistError);
+
+      const queue = getApprovalQueue();
+      const op = queue.stage({
+        type: 'add_deal_team_member',
+        entitySet: `systemusers(${resolvedUserId})/Microsoft.Dynamics.CRM.AddUserToRecordTeam`,
+        method: 'POST',
+        payload,
+        beforeState: null,
+        description: `Add ${displayName || resolvedUserId} (me) to deal team on opportunity "${opportunityName || opportunityId}"`,
+      });
+      if (reason) op.reason = reason;
+
+      auditLog({ tool: 'add_me_to_deal_team', entitySet: 'teams', params: { opportunityId, resolvedUserId }, operationId: op.id });
+
+      return text({
+        staged: true,
+        alreadyMember: false,
+        operationId: op.id,
+        description: op.description,
+        reason: op.reason || null,
+        opportunityId,
+        opportunityName,
+        systemUserId: resolvedUserId,
+        displayName,
+        recordUrl,
+        message: `Staged ${op.id}: ${op.description}. Approve via execute_operation or from the approval UI.`,
+      });
+    },
+  );
+
   // ── manage_milestone_team (staged) ──────────────────────────
   // List, add, or remove members on an engagement milestone's access team
   // (the "Milestone Team" tab in MSX). Same Access-Teams mechanism as
